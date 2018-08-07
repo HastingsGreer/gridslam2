@@ -1,23 +1,11 @@
 
-# coding: utf-8
-
-# In[4]:
-
-
 import numpy as np
 from PIL import Image
 import matplotlib.pyplot as plt
 
-
-# In[46]:
-
-
 d = 3
 gridx, gridy = np.mgrid[-d:d:1, -d:d:1]
 grid = np.array([gridx.flatten(), gridy.flatten(), np.zeros(((2*d)**2)),np.ones(((2*d)**2)) ])
-
-
-# In[70]:
 
 
 #https://www.opengl.org/discussion_boards/showthread.php/197893-View-and-Perspective-matrices
@@ -147,7 +135,8 @@ def viewport(x, y, w, h):
 # In[48]:
 
 
-t1 = np.array(Image.open("test.jpg"))[::4, ::4]
+t1 = np.array(Image.open("2unitsfromceiling.jpg"))[::4, ::4]
+#t1 = np.array(Image.open("test.jpg"))[::4, ::4]
 print(t1.shape)
 #plt.imshow(t1)
 outgrid = grid 
@@ -178,7 +167,7 @@ def projectPoints(points, matrix, image):
 
 # In[91]:
 
-vector = np.array([0, 0, -5, 0, 0, 0, 1700])
+vector = np.array([0, 0, -15, 0, 0, 0, 800])
 
 def mat_from_vec(vector):
     translation = vector[0:3]
@@ -221,7 +210,7 @@ def error(vector):
     mask = gridOnScreen != 0
     rotation = vector[3:6]
     focal = 1/vector[6]
-    error = np.sum((gridOnScreen[mask] - the_pts[mask])**2) + np.sum(np.abs(rotation)) / 100 + np.abs(focal - 1700) / 1000
+    error = np.sum((gridOnScreen[mask] - the_pts[mask])**2) + np.sum(np.abs(rotation)) / 100 + np.abs(focal - 800) / 10
     return error
 
 
@@ -230,7 +219,8 @@ def error(vector):
 import scipy.optimize
 
 def get_best_vector():
-    res = scipy.optimize.minimize(error, vector)
+    res = scipy.optimize.minimize(error, np.array([0, 0, -5, 0, 0, 0, 800]))
+    print(res.nit)
     return res.x
 
 
@@ -251,21 +241,22 @@ fittedGrid, = ax.plot(pts[0], pts[1], "o", picker=5)  # 5 points tolerance
 trueGrid, = ax.plot(gridOnScreen[0], gridOnScreen[1], "o")
 
 
+activeIndex = -1
 
 is_pick = False
 def onpick(event):
+    
     global activeIndex
     global is_pick
-    is_pick = True
-    
-    thisline = event.artist
-    xdata = thisline.get_xdata()
-    ydata = thisline.get_ydata()
     ind = event.ind
+    if activeIndex != ind:
+        is_pick = True
+    
+    
     activeIndex = ind[0]
     print(ind[0])
-    points = tuple(zip(xdata[ind], ydata[ind]))
-    #print('onpick points:', points)
+    
+    
     
 
 fig.canvas.mpl_connect('pick_event', onpick)
@@ -289,7 +280,8 @@ def on_click(event):
     
     fittedGrid.set_data(pts[0], pts[1])
     fig.canvas.draw()
-    print(gridOnScreen)
+    print(vector[:3])
+    print(vector[-1])
     
 fig.canvas.mpl_connect("button_press_event", on_click)
 
