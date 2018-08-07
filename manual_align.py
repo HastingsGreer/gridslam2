@@ -178,8 +178,15 @@ def projectPoints(points, matrix, image):
 
 # In[91]:
 
+vector = np.array([0, 0, -5, 0, 0, 0, 1700])
 
-mymatrix = matrix((0, 0, -5), (0, 0, 0), 1/1700)
+def mat_from_vec(vector):
+    translation = vector[0:3]
+    rotation = vector[3:6]
+    focal = 1/vector[6]
+    the_matrix = matrix(translation, rotation, focal)
+    return the_matrix
+mymatrix = mat_from_vec(vector)
 pts = projectPoints(grid, mymatrix, t1)
 #plt.imshow(t1)
 #plt.scatter(np.array(pts[0]), np.array(pts[1]))
@@ -206,10 +213,25 @@ pts[0]
 # In[85]:
 
 
-gridOnScreen = np.zeros(grid.shape)
+gridOnScreen = np.zeros(pts.shape)
+
+def error(vector):
+    the_matrix = mat_from_vec(vector)
+    the_pts = projectPoints(grid, the_matrix, t1)
+    mask = gridOnScreen != 0
+    rotation = vector[3:6]
+    focal = 1/vector[6]
+    error = np.sum((gridOnScreen[mask] - the_pts[mask])**2) + np.sum(np.abs(rotation)) / 100 + np.abs(focal - 1700) / 1000
+    return error
 
 
 # In[95]:
+
+import scipy.optimize
+
+def get_best_vector():
+    res = scipy.optimize.minimize(error, vector)
+    return res.x
 
 
 
@@ -224,7 +246,9 @@ ax = fig.add_subplot(111)
 ax.imshow(t1)
 ax.set_title('click on points')
 
-line, = ax.plot(pts[0], pts[1], "o", picker=5)  # 5 points tolerance
+fittedGrid, = ax.plot(pts[0], pts[1], "o", picker=5)  # 5 points tolerance
+
+trueGrid, = ax.plot(gridOnScreen[0], gridOnScreen[1], "o")
 
 
 
@@ -252,7 +276,20 @@ def on_click(event):
     if is_pick:
         is_pick = False
         return
-    gridOnScreen[activeIndex] = event.xdata, event.ydata
+    gridOnScreen[:, activeIndex] = event.xdata, event.ydata
+    trueGrid.set_data(gridOnScreen[0], gridOnScreen[1])
+    fig.canvas.draw()
+    
+    global vector
+    global mymatrix
+    global pts
+    vector = get_best_vector()
+    mymatrix = mat_from_vec(vector)
+    pts = projectPoints(grid, mymatrix, t1)
+    
+    fittedGrid.set_data(pts[0], pts[1])
+    fig.canvas.draw()
+    print(gridOnScreen)
     
 fig.canvas.mpl_connect("button_press_event", on_click)
 
