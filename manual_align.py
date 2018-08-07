@@ -3,6 +3,8 @@ import numpy as np
 from PIL import Image
 import matplotlib.pyplot as plt
 
+plt.rcParams["figure.figsize"] = (15, 15)
+
 import scipy.optimize
 
 
@@ -123,7 +125,7 @@ class ManualAligner:
         self.fig.canvas.mpl_connect('pick_event', self.onpick)
         
         self.fig.canvas.mpl_connect("button_press_event", self.on_click)
-        
+       
         plt.show()
 
 
@@ -134,12 +136,13 @@ class ManualAligner:
         rotation = vector[3:6]
         focal = 1/vector[6]
         error = np.sum((self.gridOnScreen[mask] - the_pts[mask])**2) + np.sum(np.abs(rotation)) / 200 + np.abs(focal - 800) / 10
+        
         return error
 
 
     def get_best_vector(self):
         res = scipy.optimize.minimize(self.error, np.array([0, 0, -5, 0, 0, 0, 800]))
-        print(res.nit)
+        
         return res.x
 
     def onpick(self, event):    
@@ -148,7 +151,7 @@ class ManualAligner:
             self.is_pick = True
     
         self.activeIndex = ind[0]
-        print(ind[0])
+        
 
     def on_click(self, event):
        
@@ -166,14 +169,18 @@ class ManualAligner:
         
         self.fittedGrid.set_data(self.pts[0], self.pts[1])
         self.fig.canvas.draw()
-        
-t1 = np.array(Image.open("2unitsfromceiling.jpg"))[::4, ::4]
-result = ManualAligner(t1).vector
-t1 = np.array(Image.open("test.jpg"))[::4, ::4]  
-result = ManualAligner(t1).vector
-for _ in range(100):
+
+if __name__ == "__main__":
+    t1 = np.array(Image.open("2unitsfromceiling.jpg"))[::4, ::4]
+    result = ManualAligner(t1).vector
     print(result)
-    
+    t1 = np.array(Image.open("test.jpg"))[::4, ::4]  
+    result = ManualAligner(t1).vector
+    print(result)
+    t1 = np.array(Image.open("floor.jpg"))[::4, ::4]  
+    result = ManualAligner(t1).vector
+    print(result)
+        
 
 
 
