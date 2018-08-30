@@ -3,7 +3,7 @@ import numpy as np
 from PIL import Image
 import matplotlib.pyplot as plt
 
-plt.rcParams["figure.figsize"] = (15, 15)
+
 
 import scipy.optimize
 
@@ -74,13 +74,13 @@ def rotz(a):
                       [0,0,1,0],
                       [0,0,0,1]])
 def euler(rotation):
-    return rotx(rotation[0])*roty(rotation[1]) * rotz(rotation[2])
+    return rotx(rotation[0]) * roty(rotation[1]) * rotz(rotation[2])
 def matrix(translation, rotation, focalLength):
     return simplePerspective(focalLength) * euler(rotation) * translate(translation)
 
 def projectPoints(points, matrix, image):
     out = matrix * points
-    out /= out[ 3:4].copy()
+    out /= out[3:4].copy()
     out = out[:2]
     out[0] += image.shape[1] / 2
     out[1] += image.shape[0] / 2
@@ -94,28 +94,30 @@ def mat_from_vec(vector):
     return the_matrix
     
 class ManualAligner:
-    def __init__(self, image):
+    def __init__(self, image, focalLength=None):
+
+        self.focalLength = focalLength
         self.image = image
         self.vector = np.array([0, 0, -15, 0, 0, 0, 800])
-        d = 3
+        self.d = d = 6
         gridx, gridy = np.mgrid[-d:d:1, -d:d:1]
         self.grid = np.array([gridx.flatten(), gridy.flatten(), np.zeros(((2*d)**2)),np.ones(((2*d)**2)) ])
-
-
         mymatrix = mat_from_vec(self.vector)
 
         self.pts = projectPoints(self.grid, mymatrix, self.image)
-
-        self.gridOnScreen = np.zeros(self.pts.shape)
         
+        
+        self.gridOnScreen = np.zeros(self.pts.shape)
+    def interactive_align(self):
         self.fig = plt.figure()
 
         self.ax = self.fig.add_subplot(111)
         self.ax.imshow(self.image)
+        self.init_grid_display()
+
         self.ax.set_title('click on points')
 
-        self.fittedGrid, = self.ax.plot(self.pts[0], self.pts[1], "o", picker=5)  # 5 points tolerance
-
+        
         self.trueGrid, = self.ax.plot(self.gridOnScreen[0], self.gridOnScreen[1], "o")
 
 
@@ -125,25 +127,65 @@ class ManualAligner:
         self.fig.canvas.mpl_connect('pick_event', self.onpick)
         
         self.fig.canvas.mpl_connect("button_press_event", self.on_click)
+        self.fig.canvas.mpl_connect("key_press_event", self.on_key_press)
        
         plt.show()
+    def align_from_saved(self, points_corresponding):
+        self.gridOnScreen = points_corresponding
+        self.vector = self.get_best_vector()
+    def present_registration(self):
+        self.fig = plt.figure()
+
+        self.ax = self.fig.add_subplot(111)
+        
+        self.init_grid_display()
+        
+        self.ax.set_title('click on points')
+
+        
+        self.trueGrid, = self.ax.plot(self.gridOnScreen[0], self.gridOnScreen[1], "o")
+
+
+        self.activeIndex = -1
+
+        self.is_pick = False
+        self.process_updated_annotation()
+        self.ax.imshow(self.image)
+        plt.show()
+    def init_grid_display(self):
+        
+        self.fittedGrid, = self.ax.plot(self.pts[0], self.pts[1], "o", picker=5)
+        d = self.d
+        self.vertlines = self.ax.plot(self.pts[0].reshape((2 * d, 2 * d)), self.pts[1].reshape((2 * d, 2 * d)))
+        self.horzlines = self.ax.plot(self.pts[0].reshape((2 * d, 2 * d)).transpose(), self.pts[1].reshape((2 * d, 2 * d)).transpose())
+
 
 
     def error(self, vector):
-        the_matrix = mat_from_vec(vector)
+        if self.focalLength is None:
+            the_matrix = mat_from_vec(vector)
+        else:
+            the_matrix = mat_from_vec(np.concatenate([vector, [self.focalLength]]))
         the_pts = projectPoints(self.grid, the_matrix, self.image)
         mask = self.gridOnScreen != 0
         rotation = vector[3:6]
-        focal = 1/vector[6]
+        if self.focalLength:
+            focal = 1
+        else:
+            focal = 1/vector[6]
         error = np.sum((self.gridOnScreen[mask] - the_pts[mask])**2) + np.sum(np.abs(rotation)) / 200 + np.abs(focal - 800) / 10
         
         return error
 
 
     def get_best_vector(self):
-        res = scipy.optimize.minimize(self.error, np.array([0, 0, -5, 0, 0, 0, 800]))
+        if self.focalLength is None:
+            res = scipy.optimize.minimize(self.error, np.array([0, 0, -5, 0, 0, 0, 800]))
         
-        return res.x
+            return res.x
+        res = scipy.optimize.minimize(self.error, np.array([0, 0, -5, 0, 0, 0]))
+
+        return np.concatenate([res.x, [self.focalLength]])
 
     def onpick(self, event):    
         ind = event.ind
@@ -151,14 +193,8 @@ class ManualAligner:
             self.is_pick = True
     
         self.activeIndex = ind[0]
-        
 
-    def on_click(self, event):
-       
-        if self.is_pick:
-            self.is_pick = False
-            return
-        self.gridOnScreen[:, self.activeIndex] = event.xdata, event.ydata
+    def process_updated_annotation(self):
         self.trueGrid.set_data(self.gridOnScreen[0], self.gridOnScreen[1])
         self.fig.canvas.draw()
         
@@ -166,20 +202,51 @@ class ManualAligner:
         mymatrix = mat_from_vec(self.vector)
         
         self.pts = projectPoints(self.grid, mymatrix, self.image)
-        
+        d = self.d
         self.fittedGrid.set_data(self.pts[0], self.pts[1])
+        list(map(lambda data: data[0].set_data(data[1], data[2]), zip(self.vertlines, self.pts[0].reshape((2 * d, 2 * d)), self.pts[1].reshape((2 * d, 2 * d)))))
+        list(map(lambda data: data[0].set_data(data[1], data[2]), zip(self.horzlines, self.pts[0].reshape((2 * d, 2 * d)).transpose(), self.pts[1].reshape((2 * d, 2 * d)).transpose())))
+        #self.horzlines.set_data(self.pts[0].reshape((2 * d, 2 * d)).transpose(), self.pts[1].reshape((2 * d, 2 * d)).transpose())
         self.fig.canvas.draw()
 
+    def on_click(self, event):
+       
+        if self.is_pick:
+            self.is_pick = False
+            return
+        self.gridOnScreen[:, self.activeIndex] = event.xdata, event.ydata
+        self.process_updated_annotation()
+
+    def on_key_press(self, event):
+        
+        if event.key == 'd':
+            self.gridOnScreen[:, self.activeIndex] = 0, 0
+            self.process_updated_annotation()
+        
+
+import pickle
+import click
+import os
+@click.command()
+@click.argument('folder')
+@click.argument('outfolder')
+def manual_align(folder, outfolder):
+    for fname in sorted(os.listdir(folder)):
+        full_name = os.path.join(folder, fname)
+        print(full_name)
+
+        if full_name[-4:] in ['.jpg', '.png']:
+            t2 = np.array(Image.open(full_name))
+            result = ManualAligner(t2)
+            result.interactive_align()
+            print(result)
+            with open(os.path.join(outfolder, fname + ".pickle"), "wb") as dump:
+                pickle.dump((result.vector, result.gridOnScreen), dump)
+
+
+
 if __name__ == "__main__":
-    t1 = np.array(Image.open("2unitsfromceiling.jpg"))[::4, ::4]
-    result = ManualAligner(t1).vector
-    print(result)
-    t1 = np.array(Image.open("test.jpg"))[::4, ::4]  
-    result = ManualAligner(t1).vector
-    print(result)
-    t1 = np.array(Image.open("floor.jpg"))[::4, ::4]  
-    result = ManualAligner(t1).vector
-    print(result)
+    manual_align()
         
 
 
