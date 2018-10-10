@@ -127,7 +127,16 @@ def reduce(lines):
         real_lines = af.cluster_centers_ * np.array([[300, 1]])
         return np.expand_dims(real_lines, 1)
     
+
+def reduce(lines):
+    if lines is not None:
+        af = AffinityPropagation(preference=-.06)
+        af.fit(lines[:, 0] / np.array([[300, 1]]))
+
+        real_lines = af.cluster_centers_ * np.array([[300, 1]])
+        return np.expand_dims(real_lines, 1)
     
+
 def split(lines):
     if lines is not None:
         idxs = np.arange(len(lines))
