@@ -129,7 +129,7 @@ def reduce(lines):
     
 
 def reduce(lines):
-    if lines is not None:
+    if lines is not None and lines.shape[0] != 1:
         af = AffinityPropagation(preference=-.06)
         af.fit(lines[:, 0] / np.array([[300, 1]]))
 
@@ -138,7 +138,8 @@ def reduce(lines):
     
 
 def split(lines):
-    if lines is not None:
+    print((lines is not None) and lines.shape[2] > 1)
+    if (lines is not None) and lines.shape[2] > 1:
         idxs = np.arange(len(lines))
         angles = lines[:, 0, 1] * 2
         vangles = np.array([np.cos(angles), np.sin(angles)]).transpose()

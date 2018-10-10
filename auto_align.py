@@ -94,8 +94,8 @@ def mat_from_vec(vector):
     return the_matrix
     
 class ManualAligner:
-    def __init__(self, image, focalLength=None):
-
+    def __init__(self, image, focalLength=None, activeParams = np.array([True, True, True, True, True, True, True])):
+        self.activeParams = activeParams
         self.focalLength = focalLength
         self.image = image
         self.vector = np.array([0, 0, -15, 0, 0, 0, 800])
@@ -132,7 +132,7 @@ class ManualAligner:
         plt.show()
     def align_from_saved(self, points_corresponding):
         self.gridOnScreen = points_corresponding
-        self.vector = self.get_best_vector()
+        self.vector[self.activeParams] = self.get_best_vector_active_params()
     def present_registration(self):
         self.fig = plt.figure()
 
@@ -177,6 +177,23 @@ class ManualAligner:
         
         return error
 
+    def error_active_params(self, vector):
+        the_vector = self.vector.copy()
+        the_vector[self.activeParams] = vector
+
+        the_matrix = mat_from_vec(the_vector)
+
+        the_pts = projectPoints(self.grid, the_matrix, self.image)
+        mask = self.gridOnScreen != 0
+        rotation = the_vector[3:6]
+        if self.focalLength:
+            focal = 1
+        else:
+            focal = 1/the_vector[6]
+        error = np.sum((self.gridOnScreen[mask] - the_pts[mask])**2) 
+        
+        return error
+
 
     def get_best_vector(self):
         if self.focalLength is None:
@@ -187,6 +204,12 @@ class ManualAligner:
         print("fixed_fl")
 
         return np.concatenate([res.x, [self.focalLength]])
+
+    def get_best_vector_active_params(self):
+
+        res = scipy.optimize.minimize(self.error_active_params, self.vector.copy()[self.activeParams])
+        
+        return res.x
 
     def onpick(self, event):    
         ind = event.ind
