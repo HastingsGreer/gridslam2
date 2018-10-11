@@ -128,8 +128,13 @@ def reduce(lines):
         return np.expand_dims(real_lines, 1)
     
 
-def reduce(lines):
+def reduce(lines, avoid_singularity = False):
     if lines is not None and lines.shape[0] != 1:
+        if avoid_singularity:
+            bad_idx = lines[:, 0, 1] > 2.3
+            lines[bad_idx, 0, 1] -= np.pi
+            lines[bad_idx, 0, 0] *= -1
+
         af = AffinityPropagation(preference=-.06)
         af.fit(lines[:, 0] / np.array([[300, 1]]))
 
@@ -162,10 +167,10 @@ test = random.choice(imgs2)[0]
 dialation = 1
 
 
-def get_lines(img, graph=False, liveCV=False):
+def get_lines(img, graph=False, liveCV=False, avoid_singularity=False):
 	lines = process(img[::dialation, ::dialation], graph=False, liveCV=liveCV)
 
-	l1, l2 = split(reduce(lines))
+	l1, l2 = split(reduce(lines, avoid_singularity=avoid_singularity))
 	if graph:
 		#for l in l1, l2:
 		#    plt.scatter(l[:, 0, 0], l[:, 0, 1])
