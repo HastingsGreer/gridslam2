@@ -173,7 +173,7 @@ class ManualAligner:
             focal = 1
         else:
             focal = 1/vector[6]
-        error = np.sum((self.gridOnScreen[mask] - the_pts[mask])**2) + np.sum(np.abs(rotation)) / 200 + np.abs(focal - 800) / 10
+        error = np.sum((self.gridOnScreen[mask] - the_pts[mask])**2)
         
         return error
 
