@@ -74,7 +74,7 @@ def rotz(a):
                       [0,0,1,0],
                       [0,0,0,1]])
 def euler(rotation):
-    return rotx(rotation[0]) * roty(rotation[1]) * rotz(rotation[2])
+    return  roty(rotation[1])* rotx(rotation[0]) * rotz(rotation[2])
 def matrix(translation, rotation, focalLength):
     return simplePerspective(focalLength) * euler(rotation) * translate(translation)
 
