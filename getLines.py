@@ -1,5 +1,7 @@
-import keras
-model = keras.models.load_model("line detection\\mediocre_linefinder")
+#import keras
+#import os
+#moddir = os.path.dirname(os.path.abspath(__file__))
+#model = keras.models.load_model(moddir + "/line detection/mediocre_linefinder")
 
 patch_size=128
 
@@ -80,6 +82,8 @@ def segment3(line, graph=True):
     
     for i, j, block in zip(i_grid, j_grid, classes):
         offset = (patch_size - 100) // 2
+        #plt.imshow(block)
+        #plt.show()
         result[i:i + patch_size, j:j + patch_size] = block
     
     
@@ -135,7 +139,7 @@ def reduce(lines, avoid_singularity = False):
             lines[bad_idx, 0, 1] -= np.pi
             lines[bad_idx, 0, 0] *= -1
 
-        af = AffinityPropagation(preference=-.06)
+        af = AffinityPropagation(preference=-.007)
         af.fit(lines[:, 0] / np.array([[300, 1]]))
 
         real_lines = af.cluster_centers_ * np.array([[300, 1]])
@@ -143,7 +147,7 @@ def reduce(lines, avoid_singularity = False):
     
 
 def split(lines):
-    print((lines is not None) and lines.shape[2] > 1)
+    #print((lines is not None) and lines.shape[2] > 1)
     if (lines is not None) and lines.shape[2] > 1:
         idxs = np.arange(len(lines))
         angles = lines[:, 0, 1] * 2
@@ -161,24 +165,27 @@ def split(lines):
         return l1, l2
     return None, None
 
-imgs2 = pickle.load(open("line detection\\testdata", "rb"))
-test = random.choice(imgs2)[0]
+
 
 dialation = 1
 
 
 def get_lines(img, graph=False, liveCV=False, avoid_singularity=False):
-	lines = process(img[::dialation, ::dialation], graph=False, liveCV=liveCV)
-
-	l1, l2 = split(reduce(lines, avoid_singularity=avoid_singularity))
-	if graph:
+    lines = process(img[::dialation, ::dialation], graph=graph, liveCV=liveCV)
+    if graph:
+        xt, yt = lineFromRhoTheta(lines)
+        plt.plot(xt.transpose(), yt.transpose())
+        plt.imshow(img[::dialation, ::dialation])
+        plt.show()
+    l1, l2 = split(reduce(lines, avoid_singularity=avoid_singularity))
+    if graph:
 		#for l in l1, l2:
 		#    plt.scatter(l[:, 0, 0], l[:, 0, 1])
 		#plt.show()
 
-		for l, color in zip([l1, l2], ["red", "blue"]):
-		    xt, yt = lineFromRhoTheta(l)
-		    plt.plot(xt.transpose(), yt.transpose(), c=color)
-		plt.imshow(img[::dialation, ::dialation])
-		plt.show()
-	return l1, l2
+        for l, color in zip([l1, l2], ["red", "blue"]):
+            xt, yt = lineFromRhoTheta(l)
+            plt.plot(xt.transpose(), yt.transpose(), c=color)
+        plt.imshow(img[::dialation, ::dialation])
+        plt.show()
+    return l1, l2
