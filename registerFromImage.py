@@ -302,8 +302,8 @@ def registerFromLines(lines, attitude=None, graph=False, vertical_factor = 1, fo
                     x = intersection(line1, line2)[0]
                     pts.append(x)
 
-                    m.gridOnScreen[0, 12 * (5 + i) + (4 + j)] = x[0]
-                    m.gridOnScreen[1, 12 * (5 + i) + (4 + j)] = x[1] * vertical_factor
+                    m.gridOnScreen[0, 12 * (5 + i) + (5 + j)] = x[0]
+                    m.gridOnScreen[1, 12 * (5 + i) + (5 + j)] = x[1] * vertical_factor
             pts = np.array(pts)
             #m.interactive_align()
             #m.align_from_saved(m.gridOnScreen)

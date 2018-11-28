@@ -92,6 +92,43 @@ def mat_from_vec(vector):
     focal = 1/vector[6]
     the_matrix = matrix(translation, rotation, focal)
     return the_matrix
+
+def error_point_compiled(world_point, screen_point, vector, image):
+
+    x, y, z, pitch, roll, yaw, focallength = vector
+    screen_x, screen_y = screen_point
+    world_x, world_y, world_z, _ = world_point
+    sin = np.sin
+    cos = np.cos
+    pi = np.pi
+    width, height = image.shape
+    print(width, height)
+    return (((2*focallength*(world_x*(sin(pi*pitch/180)*sin(pi*roll/180)*sin(pi*yaw/180) 
+        + cos(pi*roll/180)*cos(pi*yaw/180)) + world_y*(sin(pi*pitch/180)*sin(pi*roll/180)*cos(pi*yaw/180) 
+        - sin(pi*yaw/180)*cos(pi*roll/180)) + world_z*sin(pi*roll/180)*cos(pi*pitch/180) 
+        + x*(sin(pi*pitch/180)*sin(pi*roll/180)*sin(pi*yaw/180) + cos(pi*roll/180)*cos(pi*yaw/180)) 
+        + y*(sin(pi*pitch/180)*sin(pi*roll/180)*cos(pi*yaw/180) - sin(pi*yaw/180)*cos(pi*roll/180)) 
+        + z*sin(pi*roll/180)*cos(pi*pitch/180)) 
+    + (-height + 2*screen_x)*(world_x*(sin(pi*pitch/180)*sin(pi*yaw/180)*cos(pi*roll/180) 
+        - sin(pi*roll/180)*cos(pi*yaw/180)) + world_y*(sin(pi*pitch/180)*cos(pi*roll/180)*cos(pi*yaw/180) 
+        + sin(pi*roll/180)*sin(pi*yaw/180)) + world_z*cos(pi*pitch/180)*cos(pi*roll/180) 
+        + x*(sin(pi*pitch/180)*sin(pi*yaw/180)*cos(pi*roll/180) - sin(pi*roll/180)*cos(pi*yaw/180)) 
+        + y*(sin(pi*pitch/180)*cos(pi*roll/180)*cos(pi*yaw/180) + sin(pi*roll/180)*sin(pi*yaw/180)) 
+        + z*cos(pi*pitch/180)*cos(pi*roll/180)))**2 + (2*focallength*(world_x*sin(pi*yaw/180)*cos(pi*pitch/180) 
+        + world_y*cos(pi*pitch/180)*cos(pi*yaw/180) - world_z*sin(pi*pitch/180) + x*sin(pi*yaw/180)*cos(pi*pitch/180) 
+        + y*cos(pi*pitch/180)*cos(pi*yaw/180) - z*sin(pi*pitch/180)) 
+        + (2*screen_y - width)*(world_x*(sin(pi*pitch/180)*sin(pi*yaw/180)*cos(pi*roll/180) 
+            - sin(pi*roll/180)*cos(pi*yaw/180)) + world_y*(sin(pi*pitch/180)*cos(pi*roll/180)*cos(pi*yaw/180) 
+            + sin(pi*roll/180)*sin(pi*yaw/180)) + world_z*cos(pi*pitch/180)*cos(pi*roll/180) 
+            + x*(sin(pi*pitch/180)*sin(pi*yaw/180)*cos(pi*roll/180) - sin(pi*roll/180)*cos(pi*yaw/180)) 
+            + y*(sin(pi*pitch/180)*cos(pi*roll/180)*cos(pi*yaw/180) + sin(pi*roll/180)*sin(pi*yaw/180)) 
+            + z*cos(pi*pitch/180)*cos(pi*roll/180)))**2)/(4*(world_x*(sin(pi*pitch/180)*sin(pi*yaw/180)*cos(pi*roll/180) 
+            - sin(pi*roll/180)*cos(pi*yaw/180)) + world_y*(sin(pi*pitch/180)*cos(pi*roll/180)*cos(pi*yaw/180) 
+            + sin(pi*roll/180)*sin(pi*yaw/180)) + world_z*cos(pi*pitch/180)*cos(pi*roll/180) 
+            + x*(sin(pi*pitch/180)*sin(pi*yaw/180)*cos(pi*roll/180) - sin(pi*roll/180)*cos(pi*yaw/180)) 
+            + y*(sin(pi*pitch/180)*cos(pi*roll/180)*cos(pi*yaw/180) + sin(pi*roll/180)*sin(pi*yaw/180)) 
+            + z*cos(pi*pitch/180)*cos(pi*roll/180))**2))
+
     
 class ManualAligner:
     def __init__(self, image, focalLength=None, activeParams = np.array([True, True, True, True, True, True, True])):
@@ -173,9 +210,13 @@ class ManualAligner:
             focal = 1
         else:
             focal = 1/vector[6]
-        error = np.sum(np.abs((self.gridOnScreen[mask] - the_pts[mask])))
+        error = np.sum(((self.gridOnScreen[mask] - the_pts[mask]))**2)
+
+
         
         return error
+
+
 
     def error_active_params(self, vector):
         the_vector = self.vector.copy()
@@ -191,6 +232,18 @@ class ManualAligner:
         else:
             focal = 1/the_vector[6]
         error = np.sum((self.gridOnScreen[mask] - the_pts[mask])**2) 
+
+        #print(self.gridOnScreen)
+        #print("==========")
+        #print(the_vector)
+        if 0:
+            error2 = 0
+            for world_point, screen_point in zip(self.grid.transpose(), self.gridOnScreen.transpose()):
+                if screen_point[0] != 0:
+                    print(world_point)
+                    print(screen_point)
+                    error2 += error_point_compiled(world_point, screen_point, the_vector, self.image)
+            #print (error, error2)
         
         return error
 
