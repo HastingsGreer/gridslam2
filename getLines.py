@@ -1,7 +1,7 @@
-#import keras
-#import os
-#moddir = os.path.dirname(os.path.abspath(__file__))
-#model = keras.models.load_model(moddir + "/line detection/mediocre_linefinder")
+import keras
+import os
+moddir = os.path.dirname(os.path.abspath(__file__))
+model = keras.models.load_model(moddir + "/line detection/mediocre_linefinder")
 
 patch_size=128
 
